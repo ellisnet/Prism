@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using Prism.Navigation;
 using Prism.Mvvm;
 using Prism.Common;
@@ -14,6 +15,7 @@ using Prism.Autofac.Forms.Modularity;
 using Prism.Autofac.Navigation;
 using Prism.Autofac.Forms;
 using Prism.AppModel;
+using Prism.Autofac.Immutable;
 
 namespace Prism.Autofac
 {
@@ -22,6 +24,39 @@ namespace Prism.Autofac
     /// </summary>
     public abstract class PrismApplication : PrismApplicationBase<IContainer>
     {
+        private static bool _isContainerTypeSet = false;
+        private static AutofacContainerType _containerType = AutofacContainerType.Mutable;
+
+        /// <summary>
+        /// Allows you to set the type of container that will be used by Prism.Autofac.Forms:
+        ///  - Mutable is the traditional style of container that can be updated via ContainerBuilder.Update() (obsolete)
+        ///  - Immutable is an updated style of container that cannot be updated after it is built (RECOMMENDED)
+        /// Defaults to Mutable for backwards compatibility with Prism.Autofac.Forms v6.3.0 (and earlier).
+        /// </summary>
+        public static AutofacContainerType ContainerType
+        {
+            get => _containerType;
+            set
+            {
+                if (_isContainerTypeSet)
+                {
+                    throw new InvalidOperationException("The ContainerType can only be set once; this should be done early in "
+                        + "application initialization, before registering or resolving types.");
+                }
+                _containerType = value;
+                _isContainerTypeSet = true;
+            }
+        }
+
+        private IContainer mutableContainer;
+        private AutofacContainer immutableContainer;
+
+        private ILoggerFacade immutableLogger;
+        private IModuleCatalog immutableModuleCatalog;
+        private IApplicationProvider immutableApplicationProvider;
+        private IModuleInitializer immutableModuleInitializer;
+        private INavigationService immutableNavigationService;
+
         /// <summary>
         /// Service key used when registering the <see cref="AutofacPageNavigationService"/> with the container
         /// </summary>
@@ -68,7 +103,20 @@ namespace Prism.Autofac
         /// <returns>An instance of <see cref="IContainer" /></returns>
         protected override IContainer CreateContainer()
         {
-            return new ContainerBuilder().Build();
+            _isContainerTypeSet = true;
+            //return new ContainerBuilder().Build();
+            if (_containerType == AutofacContainerType.Mutable)
+            {
+                return (mutableContainer = mutableContainer ?? new ContainerBuilder().Build());
+            }
+            else if (_containerType == AutofacContainerType.Immutable)
+            {
+                return (immutableContainer = immutableContainer ?? new AutofacContainer());
+            }
+            else
+            {
+                throw new InvalidOperationException($"'{_containerType}' is an unknown container type.");
+            }
         }
 
         protected override IModuleManager CreateModuleManager()
@@ -85,7 +133,18 @@ namespace Prism.Autofac
         /// <returns>Instance of <see cref="INavigationService"/></returns>
         protected override INavigationService CreateNavigationService()
         {
-            return Container.ResolveNamed<INavigationService>(_navigationServiceName);
+            if (_containerType == AutofacContainerType.Mutable)
+            {
+                return Container.ResolveNamed<INavigationService>(_navigationServiceName);
+            }
+            else if (_containerType == AutofacContainerType.Immutable)
+            {
+                return immutableNavigationService;
+            }
+            else
+            {
+                throw new InvalidOperationException($"'{_containerType}' is an unknown container type.");
+            }           
         }
 
         protected override void InitializeModules()
@@ -99,22 +158,50 @@ namespace Prism.Autofac
 
         protected override void ConfigureContainer()
         {
-            var builder = new ContainerBuilder();
+            if (_containerType == AutofacContainerType.Mutable)
+            {
+                var builder = new ContainerBuilder();
 
-            builder.RegisterInstance(Logger).As<ILoggerFacade>().SingleInstance();
-            builder.RegisterInstance(ModuleCatalog).As<IModuleCatalog>().SingleInstance();
+                builder.RegisterInstance(Logger).As<ILoggerFacade>().SingleInstance();
+                builder.RegisterInstance(ModuleCatalog).As<IModuleCatalog>().SingleInstance();
 
-            builder.Register(ctx => new ApplicationProvider()).As<IApplicationProvider>().SingleInstance();
-            builder.Register(ctx => new ApplicationStore()).As<IApplicationStore>().SingleInstance();
-            builder.Register(ctx => new AutofacPageNavigationService(Container, Container.Resolve<IApplicationProvider>(), Container.Resolve<ILoggerFacade>())).Named<INavigationService>(_navigationServiceName);
-            builder.Register(ctx => new ModuleManager(Container.Resolve<IModuleInitializer>(), Container.Resolve<IModuleCatalog>())).As<IModuleManager>().SingleInstance();
-            builder.Register(ctx => new AutofacModuleInitializer(Container)).As<IModuleInitializer>().SingleInstance();
-            builder.Register(ctx => new EventAggregator()).As<IEventAggregator>().SingleInstance();
-            builder.Register(ctx => new DependencyService()).As<IDependencyService>().SingleInstance();
-            builder.Register(ctx => new PageDialogService(ctx.Resolve<IApplicationProvider>())).As<IPageDialogService>().SingleInstance();
-            builder.Register(ctx => new DeviceService()).As<IDeviceService>().SingleInstance();
+                builder.Register(ctx => new ApplicationProvider()).As<IApplicationProvider>().SingleInstance();
+                builder.Register(ctx => new ApplicationStore()).As<IApplicationStore>().SingleInstance();
+                builder.Register(ctx => new AutofacPageNavigationService(Container, Container.Resolve<IApplicationProvider>(), Container.Resolve<ILoggerFacade>())).Named<INavigationService>(_navigationServiceName);
+                builder.Register(ctx => new ModuleManager(Container.Resolve<IModuleInitializer>(), Container.Resolve<IModuleCatalog>())).As<IModuleManager>().SingleInstance();
+                builder.Register(ctx => new AutofacModuleInitializer(Container)).As<IModuleInitializer>().SingleInstance();
+                builder.Register(ctx => new EventAggregator()).As<IEventAggregator>().SingleInstance();
+                builder.Register(ctx => new DependencyService()).As<IDependencyService>().SingleInstance();
+                builder.Register(ctx => new PageDialogService(ctx.Resolve<IApplicationProvider>())).As<IPageDialogService>().SingleInstance();
+                builder.Register(ctx => new DeviceService()).As<IDeviceService>().SingleInstance();
 
-            builder.Update(Container);
+                builder.Update(Container);
+            }
+            else if (_containerType == AutofacContainerType.Immutable)
+            {
+                immutableLogger = immutableLogger ?? Logger;
+                immutableModuleCatalog = immutableModuleCatalog ?? ModuleCatalog;
+                immutableApplicationProvider = immutableApplicationProvider ?? new ApplicationProvider();
+                immutableModuleInitializer = immutableModuleInitializer ?? new AutofacModuleInitializer(Container);
+                immutableNavigationService = immutableNavigationService ??
+                                             new AutofacPageNavigationService(Container, immutableApplicationProvider, immutableLogger);
+
+                (Container as AutofacContainer)?.Builder?.RegisterInstance(immutableLogger).As<ILoggerFacade>().SingleInstance();
+                (Container as AutofacContainer)?.Builder?.RegisterInstance(immutableModuleCatalog).As<IModuleCatalog>().SingleInstance();
+                (Container as AutofacContainer)?.Builder?.Register(ctx => immutableApplicationProvider).As<IApplicationProvider>().SingleInstance();
+                (Container as AutofacContainer)?.Builder?.Register(ctx => new ApplicationStore()).As<IApplicationStore>().SingleInstance();
+                (Container as AutofacContainer)?.Builder?.Register(ctx => immutableNavigationService).Named<INavigationService>(_navigationServiceName);
+                (Container as AutofacContainer)?.Builder?.Register(ctx => new ModuleManager(immutableModuleInitializer, immutableModuleCatalog)).As<IModuleManager>().SingleInstance();
+                (Container as AutofacContainer)?.Builder?.Register(ctx => immutableModuleInitializer).As<IModuleInitializer>().SingleInstance();
+                (Container as AutofacContainer)?.Builder?.Register(ctx => new EventAggregator()).As<IEventAggregator>().SingleInstance();
+                (Container as AutofacContainer)?.Builder?.Register(ctx => new DependencyService()).As<IDependencyService>().SingleInstance();
+                (Container as AutofacContainer)?.Builder?.Register(ctx => new PageDialogService(immutableApplicationProvider)).As<IPageDialogService>().SingleInstance();
+                (Container as AutofacContainer)?.Builder?.Register(ctx => new DeviceService()).As<IDeviceService>().SingleInstance();
+            }
+            else
+            {
+                throw new InvalidOperationException($"'{_containerType}' is an unknown container type.");
+            }
         }
 
         /// <summary>
@@ -122,11 +209,22 @@ namespace Prism.Autofac
         /// </summary>
         private void FinishContainerConfiguration()
         {
-            var containerUpdater = new ContainerBuilder();
+            if (_containerType == AutofacContainerType.Mutable)
+            {
+                var containerUpdater = new ContainerBuilder();
 
-            // Make sure any not specifically registered concrete type can resolve.
-            containerUpdater.RegisterSource(new AnyConcreteTypeNotAlreadyRegisteredSource());
-            containerUpdater.Update(Container);
+                // Make sure any not specifically registered concrete type can resolve.
+                containerUpdater.RegisterSource(new AnyConcreteTypeNotAlreadyRegisteredSource());
+                containerUpdater.Update(Container);
+            }
+            else if (_containerType == AutofacContainerType.Immutable)
+            {
+                (Container as AutofacContainer)?.Builder?.RegisterSource(new AnyConcreteTypeNotAlreadyRegisteredSource());
+            }
+            else
+            {
+                throw new InvalidOperationException($"'{_containerType}' is an unknown container type.");
+            }
         }
     }
 }
