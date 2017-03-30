@@ -1,5 +1,6 @@
 ﻿using System;
 using Autofac;
+using Prism.Autofac.Immutable;
 using Prism.Common;
 using Prism.Logging;
 using Prism.Navigation;
@@ -12,7 +13,7 @@ namespace Prism.Autofac.Navigation
     /// </summary>
     public class AutofacPageNavigationService : PageNavigationService
     {
-        readonly IContainer _container;
+        private IContainer _container;
 
         /// <summary>
         /// Create a new instance of <see cref="AutofacPageNavigationService"/> with <paramref name="container"/>
@@ -26,6 +27,11 @@ namespace Prism.Autofac.Navigation
             _container = container;
         }
 
+        internal void SetContainer(IContainer container)
+        {
+            _container = container;
+        }
+
         /// <summary>
         /// Resolve a <see cref="Page"/> from <see cref="_container"/> for <paramref name="segmentName"/>
         /// </summary>
@@ -33,10 +39,25 @@ namespace Prism.Autofac.Navigation
         /// <returns>A <see cref="Page"/></returns>
         protected override Page CreatePage(string name)
         {
-            if (!_container.IsRegisteredWithName<Page>(name))
-                throw new NullReferenceException($"The requested page '{name}' has not been registered.");
+            Page result = null;
 
-            return _container.ResolveNamed<Page>(name);
+            if (PrismApplication.ContainerType == AutofacContainerType.Mutable)
+            {
+                if (!_container.IsRegisteredWithName<Page>(name))
+                    throw new NullReferenceException($"The requested page '{name}' has not been registered.");
+
+                result = _container.ResolveNamed<Page>(name);
+            }
+            else if (PrismApplication.ContainerType == AutofacContainerType.Immutable &&
+                     _container is AutofacContainer afContainer)
+            {
+                if (!afContainer.IsRegisteredPageName(name))
+                    throw new NullReferenceException($"The requested page '{name}' has not been registered.");
+
+                result = afContainer.InternalOnlyContainer.ResolveNamed<Page>(name);
+            }
+
+            return result;
         }
     }
 }

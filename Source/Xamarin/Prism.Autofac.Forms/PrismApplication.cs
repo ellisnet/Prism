@@ -51,11 +51,15 @@ namespace Prism.Autofac
         private IContainer mutableContainer;
         private AutofacContainer immutableContainer;
 
+        private IApplicationProvider immutableApplicationProvider;
+        private INavigationService initialNavigationService;
+        /*
         private ILoggerFacade immutableLogger;
         private IModuleCatalog immutableModuleCatalog;
         private IApplicationProvider immutableApplicationProvider;
         private IModuleInitializer immutableModuleInitializer;
         private INavigationService immutableNavigationService;
+        */
 
         /// <summary>
         /// Service key used when registering the <see cref="AutofacPageNavigationService"/> with the container
@@ -93,7 +97,20 @@ namespace Prism.Autofac
                     parameter = new NamedParameter("navigationService", CreateNavigationService(page));
                 }
 
-                return Container.Resolve(type, parameter);
+                if (_containerType == AutofacContainerType.Mutable)
+                {
+                    return Container.Resolve(type, parameter);
+                }
+                else if (_containerType == AutofacContainerType.Immutable && Container is AutofacContainer afContainer)
+                {
+                    //return afContainer.InternalOnlyContainer.Resolve(type, parameter);
+                    object result = afContainer.InternalOnlyContainer.Resolve(type, parameter);
+                    return result;
+                }
+                else
+                {
+                    throw new InvalidOperationException($"'{_containerType}' is an unknown container type.");
+                }
             });
         }
 
@@ -137,9 +154,11 @@ namespace Prism.Autofac
             {
                 return Container.ResolveNamed<INavigationService>(_navigationServiceName);
             }
-            else if (_containerType == AutofacContainerType.Immutable)
+            else if (_containerType == AutofacContainerType.Immutable && Container is AutofacContainer afContainer)
             {
-                return immutableNavigationService;
+                return (afContainer.IsContainerBuilt)
+                    ? Container.ResolveNamed<INavigationService>(_navigationServiceName)
+                    : initialNavigationService;
             }
             else
             {
@@ -179,6 +198,11 @@ namespace Prism.Autofac
             }
             else if (_containerType == AutofacContainerType.Immutable)
             {
+                immutableApplicationProvider = immutableApplicationProvider ?? new ApplicationProvider();
+                initialNavigationService = initialNavigationService ??
+                                             new AutofacPageNavigationService(null, immutableApplicationProvider, Logger);
+
+                /*
                 immutableLogger = immutableLogger ?? Logger;
                 immutableModuleCatalog = immutableModuleCatalog ?? ModuleCatalog;
                 immutableApplicationProvider = immutableApplicationProvider ?? new ApplicationProvider();
@@ -196,6 +220,22 @@ namespace Prism.Autofac
                 (Container as AutofacContainer)?.Register(ctx => new EventAggregator()).As<IEventAggregator>().SingleInstance();
                 (Container as AutofacContainer)?.Register(ctx => new DependencyService()).As<IDependencyService>().SingleInstance();
                 (Container as AutofacContainer)?.Register(ctx => new PageDialogService(immutableApplicationProvider)).As<IPageDialogService>().SingleInstance();
+                (Container as AutofacContainer)?.Register(ctx => new DeviceService()).As<IDeviceService>().SingleInstance();
+                */
+                (Container as AutofacContainer)?.RegisterInstance(Logger).As<ILoggerFacade>().SingleInstance();
+                (Container as AutofacContainer)?.RegisterInstance(ModuleCatalog).As<IModuleCatalog>().SingleInstance();
+
+                //(Container as AutofacContainer)?.Register(ctx => new ApplicationProvider()).As<IApplicationProvider>().SingleInstance();
+                (Container as AutofacContainer)?.RegisterInstance(immutableApplicationProvider).As<IApplicationProvider>().SingleInstance();
+                (Container as AutofacContainer)?.Register(ctx => new ApplicationStore()).As<IApplicationStore>().SingleInstance();
+                //(Container as AutofacContainer)?.Register(ctx => new AutofacPageNavigationService(null, immutableApplicationProvider, Logger)).Named<INavigationService>(_navigationServiceName);
+                (Container as AutofacContainer)?.Register(ctx => new AutofacPageNavigationService(Container, Container.Resolve<IApplicationProvider>(), Container.Resolve<ILoggerFacade>()))
+                    .Named<INavigationService>(_navigationServiceName);
+                (Container as AutofacContainer)?.Register(ctx => new ModuleManager(Container.Resolve<IModuleInitializer>(), Container.Resolve<IModuleCatalog>())).As<IModuleManager>().SingleInstance();
+                (Container as AutofacContainer)?.Register(ctx => new AutofacModuleInitializer(Container)).As<IModuleInitializer>().SingleInstance();
+                (Container as AutofacContainer)?.Register(ctx => new EventAggregator()).As<IEventAggregator>().SingleInstance();
+                (Container as AutofacContainer)?.Register(ctx => new DependencyService()).As<IDependencyService>().SingleInstance();
+                (Container as AutofacContainer)?.Register(ctx => new PageDialogService(ctx.Resolve<IApplicationProvider>())).As<IPageDialogService>().SingleInstance();
                 (Container as AutofacContainer)?.Register(ctx => new DeviceService()).As<IDeviceService>().SingleInstance();
             }
             else
@@ -220,6 +260,7 @@ namespace Prism.Autofac
             else if (_containerType == AutofacContainerType.Immutable)
             {
                 (Container as AutofacContainer)?.RegisterSource(new AnyConcreteTypeNotAlreadyRegisteredSource());
+                (initialNavigationService as AutofacPageNavigationService)?.SetContainer(Container);
             }
             else
             {

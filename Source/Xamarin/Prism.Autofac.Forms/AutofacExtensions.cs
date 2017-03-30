@@ -187,13 +187,13 @@ namespace Prism.Autofac.Forms
                 {
                     if (registerAsSingleton)
                     {
-                        afContainer.RegisterType(type).Named<Page>(name).SingleInstance();
+                        afContainer.RegisterPageType(type, name).Named<Page>(name).SingleInstance();
                         //With conditional registration in Autofac 4.4.0 and higher, it will look something like this:
                         //afContainer.Builder.RegisterType(type).Named<Page>(name).SingleInstance().IfNotRegistered(type);
                     }
                     else
                     {
-                        afContainer.RegisterType(type).Named<Page>(name);
+                        afContainer.RegisterPageType(type, name).Named<Page>(name);
                         //With conditional registration in Autofac 4.4.0 and higher, it will look something like this:
                         //afContainer.Builder.RegisterType(type).Named<Page>(name).IfNotRegistered(type);
                     }
