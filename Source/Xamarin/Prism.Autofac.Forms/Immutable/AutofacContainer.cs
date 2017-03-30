@@ -40,7 +40,7 @@ namespace Prism.Autofac.Immutable
 
         private ContainerBuilder _builder = new ContainerBuilder();
 
-        //TODO: This should not be required when we can require Autofac 4.4.0 and higher
+        //TODO: The _registeredTypes field should be eliminated when we can require Autofac 4.4.0 or higher
         private List<Type> _registeredTypes = new List<Type>();
 
         private void CheckBuilder()
@@ -51,7 +51,7 @@ namespace Prism.Autofac.Immutable
             }
         }
 
-        //TODO: Will be able to get rid of this method when we can require Autofac 4.4.0 and higher, and do conditional registration
+        //TODO: We will be able to eliminate the TrackRegisteredType() method when we can require Autofac 4.4.0 or higher, and do conditional registration.
         private void TrackRegisteredType(Type registeredType)
         {
             if (registeredType == null) return;
@@ -64,7 +64,7 @@ namespace Prism.Autofac.Immutable
             }
         }
 
-        //TODO: Will be able to get rid of this method when we can require Autofac 4.4.0 and higher, and do conditional registration
+        //TODO: We will be able to eliminate the IsRegistered() method when we can require Autofac 4.4.0 or higher, and do conditional registration
         [Obsolete("The IsRegistered() method will be removed in the future; if using Autofac 4.4.0 (or higher) use conditional registration instead.")]
         public bool IsRegistered(Type registeredType)
         {
