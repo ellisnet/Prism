@@ -35,25 +35,13 @@ namespace Prism.Autofac.Immutable
     public class AutofacContainer : IContainer
     {
         private readonly object _locker = new object();
-        private readonly object _pageLocker = new object();
 
         private IContainer _container = null;
-
-        internal IContainer InternalOnlyContainer
-        {
-            get
-            {
-                CheckBuildContainer();
-                return _container;
-            }
-        }
 
         private ContainerBuilder _builder = new ContainerBuilder();
 
         //TODO: The _registeredTypes field should be eliminated when we can require Autofac 4.4.0 or higher
         private List<Type> _registeredTypes = new List<Type>();
-
-        private List<String> _registeredPageNames = new List<string>();
 
         public bool IsContainerBuilt => _container != null;
 
@@ -88,26 +76,6 @@ namespace Prism.Autofac.Immutable
                 return _registeredTypes.Contains(registeredType);
             }
         }
-        private void TrackRegisteredPageName(string registeredName)
-        {
-            if (registeredName == null) return;
-            lock (_pageLocker)
-            {
-                if (!_registeredPageNames.Contains(registeredName))
-                {
-                    _registeredPageNames.Add(registeredName);
-                }
-            }
-        }
-
-        public bool IsRegisteredPageName(string registeredName)
-        {
-            if (registeredName == null) return false;
-            lock (_pageLocker)
-            {
-                return _registeredPageNames.Contains(registeredName);
-            }
-        }
 
         //TODO: Need to figure out how/when to handle this ModuleInitializer - may not be needed
         //public IModuleInitializer ModuleInitializer
@@ -133,12 +101,7 @@ namespace Prism.Autofac.Immutable
         public object ResolveComponent(IComponentRegistration registration, IEnumerable<Parameter> parameters)
         {
             CheckBuildContainer();
-            //return _container.ResolveComponent(registration, parameters);
-            using (var scope = _container.BeginLifetimeScope())
-            {
-                object result = _container.ResolveComponent(registration, parameters);
-                return result;
-            }
+            return _container.ResolveComponent(registration, parameters);
         }
 
         public IComponentRegistry ComponentRegistry
@@ -193,19 +156,6 @@ namespace Prism.Autofac.Immutable
             CheckBuilder();
             TrackRegisteredType(typeof(TImplementer));
             return _builder.RegisterType<TImplementer>();
-        }
-
-        /// <summary>
-        /// Register a page to be created through reflection.
-        /// </summary>
-        /// <param name="implementationType">The type of the component implementation.</param>
-        /// <returns>Registration builder allowing the registration to be configured.</returns>
-        public IRegistrationBuilder<object, ConcreteReflectionActivatorData, SingleRegistrationStyle> RegisterPageType(Type implementationType, string name)
-        {
-            CheckBuilder();
-            TrackRegisteredType(implementationType);
-            TrackRegisteredPageName(name);
-            return _builder.RegisterType(implementationType);
         }
 
         public IRegistrationBuilder<object, ConcreteReflectionActivatorData, SingleRegistrationStyle> RegisterType(Type implementationType)
@@ -400,8 +350,6 @@ namespace Prism.Autofac.Immutable
             _container = null;
             _registeredTypes?.Clear();
             _registeredTypes = null;
-            _registeredPageNames?.Clear();
-            _registeredPageNames = null;
         }
 
         public ILifetimeScope BeginLifetimeScope()

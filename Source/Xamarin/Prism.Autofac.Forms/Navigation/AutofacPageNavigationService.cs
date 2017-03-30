@@ -39,25 +39,10 @@ namespace Prism.Autofac.Navigation
         /// <returns>A <see cref="Page"/></returns>
         protected override Page CreatePage(string name)
         {
-            Page result = null;
+            if (!_container.IsRegisteredWithName<Page>(name))
+                throw new NullReferenceException($"The requested page '{name}' has not been registered.");
 
-            if (PrismApplication.ContainerType == AutofacContainerType.Mutable)
-            {
-                if (!_container.IsRegisteredWithName<Page>(name))
-                    throw new NullReferenceException($"The requested page '{name}' has not been registered.");
-
-                result = _container.ResolveNamed<Page>(name);
-            }
-            else if (PrismApplication.ContainerType == AutofacContainerType.Immutable &&
-                     _container is AutofacContainer afContainer)
-            {
-                if (!afContainer.IsRegisteredPageName(name))
-                    throw new NullReferenceException($"The requested page '{name}' has not been registered.");
-
-                result = afContainer.InternalOnlyContainer.ResolveNamed<Page>(name);
-            }
-
-            return result;
+            return _container.ResolveNamed<Page>(name);
         }
     }
 }

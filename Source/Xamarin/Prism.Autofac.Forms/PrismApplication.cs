@@ -97,20 +97,7 @@ namespace Prism.Autofac
                     parameter = new NamedParameter("navigationService", CreateNavigationService(page));
                 }
 
-                if (_containerType == AutofacContainerType.Mutable)
-                {
-                    return Container.Resolve(type, parameter);
-                }
-                else if (_containerType == AutofacContainerType.Immutable && Container is AutofacContainer afContainer)
-                {
-                    //return afContainer.InternalOnlyContainer.Resolve(type, parameter);
-                    object result = afContainer.InternalOnlyContainer.Resolve(type, parameter);
-                    return result;
-                }
-                else
-                {
-                    throw new InvalidOperationException($"'{_containerType}' is an unknown container type.");
-                }
+                return Container.Resolve(type, parameter);
             });
         }
 
