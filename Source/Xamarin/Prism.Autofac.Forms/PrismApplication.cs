@@ -186,17 +186,17 @@ namespace Prism.Autofac
                 immutableNavigationService = immutableNavigationService ??
                                              new AutofacPageNavigationService(Container, immutableApplicationProvider, immutableLogger);
 
-                (Container as AutofacContainer)?.Builder?.RegisterInstance(immutableLogger).As<ILoggerFacade>().SingleInstance();
-                (Container as AutofacContainer)?.Builder?.RegisterInstance(immutableModuleCatalog).As<IModuleCatalog>().SingleInstance();
-                (Container as AutofacContainer)?.Builder?.Register(ctx => immutableApplicationProvider).As<IApplicationProvider>().SingleInstance();
-                (Container as AutofacContainer)?.Builder?.Register(ctx => new ApplicationStore()).As<IApplicationStore>().SingleInstance();
-                (Container as AutofacContainer)?.Builder?.Register(ctx => immutableNavigationService).Named<INavigationService>(_navigationServiceName);
-                (Container as AutofacContainer)?.Builder?.Register(ctx => new ModuleManager(immutableModuleInitializer, immutableModuleCatalog)).As<IModuleManager>().SingleInstance();
-                (Container as AutofacContainer)?.Builder?.Register(ctx => immutableModuleInitializer).As<IModuleInitializer>().SingleInstance();
-                (Container as AutofacContainer)?.Builder?.Register(ctx => new EventAggregator()).As<IEventAggregator>().SingleInstance();
-                (Container as AutofacContainer)?.Builder?.Register(ctx => new DependencyService()).As<IDependencyService>().SingleInstance();
-                (Container as AutofacContainer)?.Builder?.Register(ctx => new PageDialogService(immutableApplicationProvider)).As<IPageDialogService>().SingleInstance();
-                (Container as AutofacContainer)?.Builder?.Register(ctx => new DeviceService()).As<IDeviceService>().SingleInstance();
+                (Container as AutofacContainer)?.RegisterInstance(immutableLogger).As<ILoggerFacade>().SingleInstance();
+                (Container as AutofacContainer)?.RegisterInstance(immutableModuleCatalog).As<IModuleCatalog>().SingleInstance();
+                (Container as AutofacContainer)?.Register(ctx => immutableApplicationProvider).As<IApplicationProvider>().SingleInstance();
+                (Container as AutofacContainer)?.Register(ctx => new ApplicationStore()).As<IApplicationStore>().SingleInstance();
+                (Container as AutofacContainer)?.Register(ctx => immutableNavigationService).Named<INavigationService>(_navigationServiceName);
+                (Container as AutofacContainer)?.Register(ctx => new ModuleManager(immutableModuleInitializer, immutableModuleCatalog)).As<IModuleManager>().SingleInstance();
+                (Container as AutofacContainer)?.Register(ctx => immutableModuleInitializer).As<IModuleInitializer>().SingleInstance();
+                (Container as AutofacContainer)?.Register(ctx => new EventAggregator()).As<IEventAggregator>().SingleInstance();
+                (Container as AutofacContainer)?.Register(ctx => new DependencyService()).As<IDependencyService>().SingleInstance();
+                (Container as AutofacContainer)?.Register(ctx => new PageDialogService(immutableApplicationProvider)).As<IPageDialogService>().SingleInstance();
+                (Container as AutofacContainer)?.Register(ctx => new DeviceService()).As<IDeviceService>().SingleInstance();
             }
             else
             {
@@ -219,7 +219,7 @@ namespace Prism.Autofac
             }
             else if (_containerType == AutofacContainerType.Immutable)
             {
-                (Container as AutofacContainer)?.Builder?.RegisterSource(new AnyConcreteTypeNotAlreadyRegisteredSource());
+                (Container as AutofacContainer)?.RegisterSource(new AnyConcreteTypeNotAlreadyRegisteredSource());
             }
             else
             {

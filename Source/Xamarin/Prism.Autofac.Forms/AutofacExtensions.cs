@@ -152,6 +152,7 @@ namespace Prism.Autofac.Forms
         /// after the container is already created.
         /// Uses a new ContainerBuilder instance to update the Container.
         /// </summary>
+        /// <param name="container">The container to register type with</param>
         /// <param name="type">The type to register.</param>
         /// <param name="name">The name you will use to resolve the component in future.</param>
         /// <param name="registerAsSingleton">Registers the type as a singleton.</param>
@@ -179,22 +180,25 @@ namespace Prism.Autofac.Forms
             }
             else if (PrismApplication.ContainerType == AutofacContainerType.Immutable && container is AutofacContainer afContainer)
             {
-                //TODO: Need to figure out a way to determine if the type is already registered or not.
+                //TODO: In the future, will eliminate the IsRegistered() check and do these as conditional registrations.
+                //  But conditional registrations are not available until Autofac 4.4.0, and we are only requiring 3.5.2 at this time
 
-                if (registerAsSingleton)
+                if (!afContainer.IsRegistered(type))
                 {
-                    afContainer.Builder.RegisterType(type).Named<Page>(name).SingleInstance();
-                    //With conditional registration in Autofac 4.4.0 and higher, will look something like this:
-                    //afContainer.Builder.RegisterType(type).Named<Page>(name).SingleInstance().IfNotRegistered(type);
-                }
-                else
-                {
-                    afContainer.Builder.RegisterType(type).Named<Page>(name);
-                    //With conditional registration in Autofac 4.4.0 and higher, will look something like this:
-                    //afContainer.Builder.RegisterType(type).Named<Page>(name).IfNotRegistered(type);
+                    if (registerAsSingleton)
+                    {
+                        afContainer.RegisterType(type).Named<Page>(name).SingleInstance();
+                        //With conditional registration in Autofac 4.4.0 and higher, will look something like this:
+                        //afContainer.Builder.RegisterType(type).Named<Page>(name).SingleInstance().IfNotRegistered(type);
+                    }
+                    else
+                    {
+                        afContainer.RegisterType(type).Named<Page>(name);
+                        //With conditional registration in Autofac 4.4.0 and higher, will look something like this:
+                        //afContainer.Builder.RegisterType(type).Named<Page>(name).IfNotRegistered(type);
+                    }
                 }
             }
-
         }
     }
 }
