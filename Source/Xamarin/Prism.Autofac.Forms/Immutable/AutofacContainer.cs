@@ -10,29 +10,11 @@ using Autofac.Core.Resolving;
 using Autofac.Features.LightweightAdapters;
 using Autofac.Features.OpenGenerics;
 using Autofac.Features.Scanning;
-using Prism.Modularity;
+//using Prism.Modularity;
 
-namespace Prism.Autofac
+namespace Prism.Autofac.Forms.Immutable
 {
-    /// <summary>
-    /// Options for whether the Autofac Container can be updated or not.
-    /// </summary>
-    public enum AutofacContainerType
-    {
-        /// <summary>
-        /// An Autofac Container that can be updated via the obsolete ContainerBuilder.Update() method.
-        /// </summary>
-        Mutable = 0,
-        /// <summary>
-        /// An Autofac Container that is not able to be updated via the updated obsolete ContainerBuilder.Update() method (RECOMMENDED).
-        /// </summary>
-        Immutable = 1
-    }
-}
-
-namespace Prism.Autofac.Immutable
-{
-    public class AutofacContainer : IContainer
+    public class AutofacContainer : IAutofacContainer
     {
         private readonly object _locker = new object();
 
@@ -67,8 +49,8 @@ namespace Prism.Autofac.Immutable
         }
 
         //TODO: We will be able to eliminate the IsRegistered() method when we can require Autofac 4.4.0 or higher, and do conditional registration
-        [Obsolete("The IsRegistered() method will be removed in the future; if using Autofac 4.4.0 (or higher) use conditional registration instead.")]
-        public bool IsRegistered(Type registeredType)
+        [Obsolete("The IsTypeRegistered() method will be removed in the future; if using Autofac 4.4.0 (or higher) use conditional registration instead.")]
+        public bool IsTypeRegistered(Type registeredType)
         {
             if (registeredType == null) return false;
             lock (_locker)

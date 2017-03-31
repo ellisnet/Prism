@@ -1,6 +1,5 @@
 ﻿using System;
 using Autofac;
-using Prism.Autofac.Immutable;
 using Prism.Mvvm;
 using Xamarin.Forms;
 using Prism.Navigation;
@@ -67,6 +66,7 @@ namespace Prism.Autofac.Forms
         /// <param name="windowsView">Windows Specific View Type</param>
         /// <param name="winPhoneView">Windows Phone Specific View Type</param>
         /// <returns><see cref="IContainer"/></returns>
+        // ReSharper disable once InconsistentNaming
         public static IContainer RegisterTypeForNavigationOnPlatform<TView, TViewModel>(this IContainer container, string name = null, Type androidView = null, Type iOSView = null, Type otherView = null, Type windowsView = null, Type winPhoneView = null)
             where TView : Page
             where TViewModel : class
@@ -178,12 +178,12 @@ namespace Prism.Autofac.Forms
                     containerUpdater.Update(container);
                 }
             }
-            else if (PrismApplication.ContainerType == AutofacContainerType.Immutable && container is AutofacContainer afContainer)
+            else if (PrismApplication.ContainerType == AutofacContainerType.Immutable && container is IAutofacContainer afContainer)
             {
-                //TODO: In the future, we will eliminate the IsRegistered() check and do these as conditional registrations.
+                //TODO: In the future, we will eliminate the IsTypeRegistered() check and do these as conditional registrations.
                 //  But conditional registrations are not available until Autofac 4.4.0, and we are only requiring 3.5.2 at this time
 
-                if (!afContainer.IsRegistered(type))
+                if (!afContainer.IsTypeRegistered(type))
                 {
                     if (registerAsSingleton)
                     {
