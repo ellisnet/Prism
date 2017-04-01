@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Reflection;
 using Prism.Navigation;
 using Prism.Mvvm;
 using Prism.Common;
@@ -54,11 +55,15 @@ namespace Prism.Autofac
 
         private IApplicationProvider _immutableApplicationProvider;
         private INavigationService _initialNavigationService;
+        //private IModuleInitializer _immutableModuleInitializer;
+        //private IModuleManager _immutableModuleManager;
+
+        private bool _doModuleManagerRun;
+
         /*
         private ILoggerFacade immutableLogger;
         private IModuleCatalog immutableModuleCatalog;
         private IApplicationProvider immutableApplicationProvider;
-        private IModuleInitializer immutableModuleInitializer;
         private INavigationService immutableNavigationService;
         */
 
@@ -159,8 +164,20 @@ namespace Prism.Autofac
         {
             if (ModuleCatalog.Modules.Any())
             {
-                var manager = Container.Resolve<IModuleManager>();
-                manager.Run();
+                if (_containerType == AutofacContainerType.Mutable)
+                {
+                    var manager = Container.Resolve<IModuleManager>();
+                    manager.Run();
+                }
+                else if (_containerType == AutofacContainerType.Immutable)
+                {
+                    //In immutable mode, module initialization is moved to the FinishContainerConfiguration() method
+                    _doModuleManagerRun = true;
+                }
+                else
+                {
+                    throw new InvalidOperationException($"'{_containerType}' is an unknown container type.");
+                }          
             }
         }
 
@@ -190,12 +207,15 @@ namespace Prism.Autofac
                 _immutableApplicationProvider = _immutableApplicationProvider ?? new ApplicationProvider();
                 _initialNavigationService = _initialNavigationService ??
                                              new AutofacPageNavigationService(null, _immutableApplicationProvider, Logger);
+                //_immutableModuleInitializer = _immutableModuleInitializer ?? new AutofacModuleInitializer(Container);
+                //_immutableModuleManager = _immutableModuleManager ??
+                //                          new ModuleManager(_immutableModuleInitializer, ModuleCatalog);
 
                 /*
                 immutableLogger = immutableLogger ?? Logger;
                 immutableModuleCatalog = immutableModuleCatalog ?? ModuleCatalog;
                 immutableApplicationProvider = immutableApplicationProvider ?? new ApplicationProvider();
-                immutableModuleInitializer = immutableModuleInitializer ?? new AutofacModuleInitializer(Container);
+                
                 immutableNavigationService = immutableNavigationService ??
                                              new AutofacPageNavigationService(Container, immutableApplicationProvider, immutableLogger);
 
@@ -220,16 +240,51 @@ namespace Prism.Autofac
                 //(Container as IAutofacContainer)?.Register(ctx => new AutofacPageNavigationService(null, immutableApplicationProvider, Logger)).Named<INavigationService>(_navigationServiceName);
                 (Container as IAutofacContainer)?.Register(ctx => new AutofacPageNavigationService(Container, Container.Resolve<IApplicationProvider>(), Container.Resolve<ILoggerFacade>()))
                     .Named<INavigationService>(_navigationServiceName);
-                (Container as IAutofacContainer)?.Register(ctx => new ModuleManager(Container.Resolve<IModuleInitializer>(), Container.Resolve<IModuleCatalog>())).As<IModuleManager>().SingleInstance();
+                //(Container as IAutofacContainer)?.RegisterInstance(_immutableModuleInitializer).As<IModuleInitializer>().SingleInstance();
+                //(Container as IAutofacContainer)?.RegisterInstance(_immutableModuleManager).As<IModuleManager>().SingleInstance();
                 (Container as IAutofacContainer)?.Register(ctx => new AutofacModuleInitializer(Container)).As<IModuleInitializer>().SingleInstance();
+                (Container as IAutofacContainer)?.Register(ctx => new ModuleManager(Container.Resolve<IModuleInitializer>(), Container.Resolve<IModuleCatalog>())).As<IModuleManager>().SingleInstance();
                 (Container as IAutofacContainer)?.Register(ctx => new EventAggregator()).As<IEventAggregator>().SingleInstance();
                 (Container as IAutofacContainer)?.Register(ctx => new DependencyService()).As<IDependencyService>().SingleInstance();
                 (Container as IAutofacContainer)?.Register(ctx => new PageDialogService(ctx.Resolve<IApplicationProvider>())).As<IPageDialogService>().SingleInstance();
                 (Container as IAutofacContainer)?.Register(ctx => new DeviceService()).As<IDeviceService>().SingleInstance();
+                (Container as IAutofacContainer)?.RegisterInstance(Container).As<IContainer>().SingleInstance();
+                (Container as IAutofacContainer)?.RegisterInstance(Container).As<IAutofacContainer>().SingleInstance();
             }
             else
             {
                 throw new InvalidOperationException($"'{_containerType}' is an unknown container type.");
+            }
+        }
+
+        private void PreRegisterModuleTypes()
+        {
+            foreach (Type moduleType in ModuleCatalog
+                .Modules
+                .Select(s => s.ModuleType)
+                .Where(w => w != null && w.GetTypeInfo().ImplementedInterfaces.Contains(typeof(IPreRegisterTypes)))
+                .Distinct())
+            {
+                object instance = null;
+                foreach (ConstructorInfo ctor in moduleType.GetTypeInfo().DeclaredConstructors)
+                {
+                    ParameterInfo[] ctorParams = ctor.GetParameters();
+                    if (ctorParams == null || ctorParams.Length == 0)
+                    {
+                        instance = ctor.Invoke(new object[] { });
+                    }
+                    else if (ctorParams.Length == 1 && (ctorParams[0].ParameterType == typeof(IContainer) ||
+                                                        ctorParams[0].ParameterType == typeof(IAutofacContainer)))
+                    {
+                        instance = ctor.Invoke(new object[] { (IAutofacContainer)Container });
+                    }
+                }
+                if (instance == null)
+                {
+                    throw new InvalidOperationException(
+                        $"Unable to execute RegisterTypes() on the '{moduleType.Name}' module because a compatible constructor could not be found.");
+                }
+                (instance as IPreRegisterTypes)?.RegisterTypes((IAutofacContainer)Container);
             }
         }
 
@@ -248,8 +303,21 @@ namespace Prism.Autofac
             }
             else if (_containerType == AutofacContainerType.Immutable)
             {
+                if (_doModuleManagerRun)
+                {
+                    //Pre-registering any module types here - using reflection to create an instance of the module and run RegisterTypes() on it
+                    //  because the container has not been built yet; so I can't use the container to give me an instance of the module.
+                    PreRegisterModuleTypes();
+                }
+
                 (Container as IAutofacContainer)?.RegisterSource(new AnyConcreteTypeNotAlreadyRegisteredSource());
                 (_initialNavigationService as AutofacPageNavigationService)?.SetContainer(Container);
+
+                if (_doModuleManagerRun)
+                {
+                    //Finished registering things in the container, so the container can be built and modules initialized
+                    Container.Resolve<IModuleManager>().Run();
+                }
             }
             else
             {

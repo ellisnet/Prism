@@ -10,7 +10,6 @@ using Autofac.Core.Resolving;
 using Autofac.Features.LightweightAdapters;
 using Autofac.Features.OpenGenerics;
 using Autofac.Features.Scanning;
-//using Prism.Modularity;
 
 namespace Prism.Autofac.Forms.Immutable
 {
@@ -18,9 +17,11 @@ namespace Prism.Autofac.Forms.Immutable
     {
         private readonly object _locker = new object();
 
-        private IContainer _container = null;
+        private IContainer _container;
 
         private ContainerBuilder _builder = new ContainerBuilder();
+
+        private IComponentRegistry _runtimeRegistry;
 
         //TODO: The _registeredTypes field should be eliminated when we can require Autofac 4.4.0 or higher
         private List<Type> _registeredTypes = new List<Type>();
@@ -59,15 +60,6 @@ namespace Prism.Autofac.Forms.Immutable
             }
         }
 
-        //TODO: Need to figure out how/when to handle this ModuleInitializer - may not be needed
-        //public IModuleInitializer ModuleInitializer
-        //{
-        //    get
-        //    {
-        //        throw new NotImplementedException();
-        //    }
-        //}
-
         private void CheckBuildContainer()
         {
             if (IsContainerBuilt) return;
@@ -76,6 +68,7 @@ namespace Prism.Autofac.Forms.Immutable
                 if (_container == null)
                 {
                     _container = _builder.Build();
+                    _runtimeRegistry = new RuntimeComponentRegistry(_container);
                 }
             }
         }
@@ -91,7 +84,7 @@ namespace Prism.Autofac.Forms.Immutable
             get
             {
                 CheckBuildContainer();
-                return _container.ComponentRegistry;
+                return _runtimeRegistry;
             }
         }
 
@@ -327,6 +320,8 @@ namespace Prism.Autofac.Forms.Immutable
 
         public void Dispose()
         {
+            _runtimeRegistry?.Dispose();
+            _runtimeRegistry = null;
             _builder = null;
             _container?.Dispose();
             _container = null;
