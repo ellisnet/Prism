@@ -49,7 +49,7 @@ namespace Prism.Autofac.Forms.Immutable
             }
         }
 
-        //TODO: We will be able to eliminate the IsRegistered() method when we can require Autofac 4.4.0 or higher, and do conditional registration
+        //TODO: We will be able to eliminate the IsTypeRegistered() method when we can require Autofac 4.4.0 or higher, and do conditional registration
         [Obsolete("The IsTypeRegistered() method will be removed in the future; if using Autofac 4.4.0 (or higher) use conditional registration instead.")]
         public bool IsTypeRegistered(Type registeredType)
         {
@@ -377,6 +377,7 @@ namespace Prism.Autofac.Forms.Immutable
             }
         }
 
+        //These events appear to not be used by Prism.Autofac.Forms
         public event EventHandler<LifetimeScopeBeginningEventArgs> ChildLifetimeScopeBeginning;
         public event EventHandler<LifetimeScopeEndingEventArgs> CurrentScopeEnding;
         public event EventHandler<ResolveOperationBeginningEventArgs> ResolveOperationBeginning;

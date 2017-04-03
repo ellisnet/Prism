@@ -11,11 +11,10 @@ namespace Prism.Autofac.Forms.Tests.Mocks
 {
     public class PrismApplicationMock : PrismApplication
     {
-        public PrismApplicationMock()
-        {
-        }
+        public PrismApplicationMock(AutofacContainerType containerType) : base(containerType, null)
+        { }
 
-        public PrismApplicationMock(Page startPage) : this()
+        public PrismApplicationMock(Page startPage, AutofacContainerType containerType) : this(containerType)
         {
             Current.MainPage = startPage;
         }
@@ -41,23 +40,39 @@ namespace Prism.Autofac.Forms.Tests.Mocks
 
         protected override void RegisterTypes()
         {
-            var builder = new ContainerBuilder();
+            FormsDependencyService.Register<IDependencyServiceMock>(new DependencyServiceMock());
 
-            builder.RegisterType<ServiceMock>().As<IServiceMock>();
-            builder.RegisterType<AutowireViewModel>();
-            builder.RegisterType<ViewModelAMock>();
-            builder.Register(ctx => new ViewModelBMock()).Named<ViewModelBMock>(ViewModelBMock.Key);
-            builder.RegisterType<ConstructorArgumentViewModel>();
-            builder.RegisterType<ModuleMock>().SingleInstance();
+            if (ContainerType == AutofacContainerType.Mutable)
+            {
+                var builder = new ContainerBuilder();
 
-            builder.Update(Container);
+                builder.RegisterType<ServiceMock>().As<IServiceMock>();
+                builder.RegisterType<AutowireViewModel>();
+                builder.RegisterType<ViewModelAMock>();
+                builder.Register(ctx => new ViewModelBMock()).Named<ViewModelBMock>(ViewModelBMock.Key);
+                builder.RegisterType<ConstructorArgumentViewModel>();
+                builder.RegisterType<ModuleMock>().SingleInstance();
+                builder.Register(ctx => FormsDependencyService.Get<IDependencyServiceMock>())
+                    .As<IDependencyServiceMock>();
+
+                builder.Update(Container);
+            }
+            else if (ContainerType == AutofacContainerType.Immutable)
+            {
+                (Container as IAutofacContainer)?.RegisterType<ServiceMock>().As<IServiceMock>();
+                (Container as IAutofacContainer)?.RegisterType<AutowireViewModel>();
+                (Container as IAutofacContainer)?.RegisterType<ViewModelAMock>();
+                (Container as IAutofacContainer)?.Register(ctx => new ViewModelBMock()).Named<ViewModelBMock>(ViewModelBMock.Key);
+                (Container as IAutofacContainer)?.RegisterType<ConstructorArgumentViewModel>();
+                (Container as IAutofacContainer)?.RegisterType<ModuleMock>().SingleInstance();
+                (Container as IAutofacContainer)?.Register(ctx => FormsDependencyService.Get<IDependencyServiceMock>())
+                    .As<IDependencyServiceMock>();
+            }
 
             Container.RegisterTypeForNavigation<ViewMock>("view");
             Container.RegisterTypeForNavigation<ViewAMock, ViewModelAMock>();
             Container.RegisterTypeForNavigation<AutowireView, AutowireViewModel>();
             Container.RegisterTypeForNavigation<ConstructorArgumentView, ConstructorArgumentViewModel>();
-
-            FormsDependencyService.Register<IDependencyServiceMock>(new DependencyServiceMock());
         }
 
         public INavigationService CreateNavigationServiceForPage()

@@ -29,9 +29,18 @@ namespace Prism.Autofac.Forms
 
     public interface IAutofacContainer : IContainer
     {
+        /// <summary>
+        /// Identifies if the wrapped Autofac IContainer instance has been built or not.
+        /// (Type/page registrations can no longer be made after it has been built.
+        /// </summary>
         bool IsContainerBuilt { get; }
 
-        //TODO: We will be able to eliminate the IsRegistered() method when we can require Autofac 4.4.0 or higher, and do conditional registration
+        //TODO: We will be able to eliminate the IsTypeRegistered() method when we can require Autofac 4.4.0 or higher, and do conditional registration
+        /// <summary>
+        /// Identifies if a particular Type has already been registered for the wrapped IContainer instance (to be built)
+        /// </summary>
+        /// <param name="registeredType">The Type to check</param>
+        /// <returns>True if the Type is already registered, False if it is not.</returns>
         [Obsolete("The IsTypeRegistered() method will be removed in the future; if using Autofac 4.4.0 (or higher) use conditional registration instead.")]
         bool IsTypeRegistered(Type registeredType);
 

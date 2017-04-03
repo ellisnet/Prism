@@ -180,7 +180,8 @@ namespace Prism.Autofac.Forms
             }
             else if (PrismApplication.ContainerType == AutofacContainerType.Immutable && container is IAutofacContainer afContainer)
             {
-                //TODO: In the future, we will eliminate the IsTypeRegistered() check and do these as conditional registrations.
+                //TODO: In the future, the use of IsTypeRegistered() should be eliminated and these should be done as conditional 
+                //  registrations instead: http://docs.autofac.org/en/latest/register/registration.html#conditional-registration
                 //  But conditional registrations are not available until Autofac 4.4.0, and we are only requiring 3.5.2 at this time
 
                 if (!afContainer.IsTypeRegistered(type))

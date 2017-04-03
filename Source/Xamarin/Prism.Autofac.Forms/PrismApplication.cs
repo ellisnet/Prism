@@ -26,6 +26,18 @@ namespace Prism.Autofac
     /// </summary>
     public abstract class PrismApplication : PrismApplicationBase<IContainer>
     {
+        /// <summary>
+        /// Service key used when registering the <see cref="AutofacPageNavigationService"/> with the container
+        /// </summary>
+        // ReSharper disable once InconsistentNaming
+        const string _navigationServiceName = "AutofacPageNavigationService";
+
+        private IContainer _mutableContainer;
+        private IAutofacContainer _immutableContainer;
+        private IApplicationProvider _immutableApplicationProvider;
+        private INavigationService _initialNavigationService;
+        private bool _doModuleManagerRun;
+
         private static bool _isContainerTypeSet;
         private static AutofacContainerType _containerType = AutofacContainerType.Mutable;
 
@@ -50,29 +62,6 @@ namespace Prism.Autofac
             }
         }
 
-        private IContainer _mutableContainer;
-        private IAutofacContainer _immutableContainer;
-
-        private IApplicationProvider _immutableApplicationProvider;
-        private INavigationService _initialNavigationService;
-        //private IModuleInitializer _immutableModuleInitializer;
-        //private IModuleManager _immutableModuleManager;
-
-        private bool _doModuleManagerRun;
-
-        /*
-        private ILoggerFacade immutableLogger;
-        private IModuleCatalog immutableModuleCatalog;
-        private IApplicationProvider immutableApplicationProvider;
-        private INavigationService immutableNavigationService;
-        */
-
-        /// <summary>
-        /// Service key used when registering the <see cref="AutofacPageNavigationService"/> with the container
-        /// </summary>
-        // ReSharper disable once InconsistentNaming
-        const string _navigationServiceName = "AutofacPageNavigationService";
-
         /// <summary>
         /// Create a new instance of <see cref="PrismApplication"/>
         /// </summary>
@@ -86,10 +75,19 @@ namespace Prism.Autofac
         {
         }
 
+#if TEST
+        //Only want this constructor for testing - allows containerType to be set per PrismApplication instance
+        protected PrismApplication(AutofacContainerType containerType, IPlatformInitializer initializer = null)
+            : base(initializer)
+        {
+            _isContainerTypeSet = true;
+            _containerType = containerType;
+        }
+#endif
+
         public override void Initialize()
         {
             base.Initialize();
-
             FinishContainerConfiguration();
         }
 
@@ -98,8 +96,7 @@ namespace Prism.Autofac
             ViewModelLocationProvider.SetDefaultViewModelFactory((view, type) =>
             {
                 NamedParameter parameter = null;
-                var page = view as Page;
-                if (page != null)
+                if (view is Page page)
                 {
                     parameter = new NamedParameter("navigationService", CreateNavigationService(page));
                 }
@@ -206,43 +203,16 @@ namespace Prism.Autofac
                 _immutableApplicationProvider = _immutableApplicationProvider ?? new ApplicationProvider();
                 _initialNavigationService = _initialNavigationService ??
                                              new AutofacPageNavigationService(null, _immutableApplicationProvider, Logger);
-                //_immutableModuleInitializer = _immutableModuleInitializer ?? new AutofacModuleInitializer(Container);
-                //_immutableModuleManager = _immutableModuleManager ??
-                //                          new ModuleManager(_immutableModuleInitializer, ModuleCatalog);
 
-                /*
-                immutableLogger = immutableLogger ?? Logger;
-                immutableModuleCatalog = immutableModuleCatalog ?? ModuleCatalog;
-                immutableApplicationProvider = immutableApplicationProvider ?? new ApplicationProvider();
-                
-                immutableNavigationService = immutableNavigationService ??
-                                             new AutofacPageNavigationService(Container, immutableApplicationProvider, immutableLogger);
-
-                (Container as IAutofacContainer)?.RegisterInstance(immutableLogger).As<ILoggerFacade>().SingleInstance();
-                (Container as IAutofacContainer)?.RegisterInstance(immutableModuleCatalog).As<IModuleCatalog>().SingleInstance();
-                (Container as IAutofacContainer)?.Register(ctx => immutableApplicationProvider).As<IApplicationProvider>().SingleInstance();
-                (Container as IAutofacContainer)?.Register(ctx => new ApplicationStore()).As<IApplicationStore>().SingleInstance();
-                (Container as IAutofacContainer)?.Register(ctx => immutableNavigationService).Named<INavigationService>(_navigationServiceName);
-                (Container as IAutofacContainer)?.Register(ctx => new ModuleManager(immutableModuleInitializer, immutableModuleCatalog)).As<IModuleManager>().SingleInstance();
-                (Container as IAutofacContainer)?.Register(ctx => immutableModuleInitializer).As<IModuleInitializer>().SingleInstance();
-                (Container as IAutofacContainer)?.Register(ctx => new EventAggregator()).As<IEventAggregator>().SingleInstance();
-                (Container as IAutofacContainer)?.Register(ctx => new DependencyService()).As<IDependencyService>().SingleInstance();
-                (Container as IAutofacContainer)?.Register(ctx => new PageDialogService(immutableApplicationProvider)).As<IPageDialogService>().SingleInstance();
-                (Container as IAutofacContainer)?.Register(ctx => new DeviceService()).As<IDeviceService>().SingleInstance();
-                */
                 (Container as IAutofacContainer)?.RegisterInstance(Logger).As<ILoggerFacade>().SingleInstance();
                 (Container as IAutofacContainer)?.RegisterInstance(ModuleCatalog).As<IModuleCatalog>().SingleInstance();
-
-                //(Container as IAutofacContainer)?.Register(ctx => new ApplicationProvider()).As<IApplicationProvider>().SingleInstance();
                 (Container as IAutofacContainer)?.RegisterInstance(_immutableApplicationProvider).As<IApplicationProvider>().SingleInstance();
                 (Container as IAutofacContainer)?.Register(ctx => new ApplicationStore()).As<IApplicationStore>().SingleInstance();
-                //(Container as IAutofacContainer)?.Register(ctx => new AutofacPageNavigationService(null, immutableApplicationProvider, Logger)).Named<INavigationService>(_navigationServiceName);
                 (Container as IAutofacContainer)?.Register(ctx => new AutofacPageNavigationService(Container, Container.Resolve<IApplicationProvider>(), Container.Resolve<ILoggerFacade>()))
                     .Named<INavigationService>(_navigationServiceName);
-                //(Container as IAutofacContainer)?.RegisterInstance(_immutableModuleInitializer).As<IModuleInitializer>().SingleInstance();
-                //(Container as IAutofacContainer)?.RegisterInstance(_immutableModuleManager).As<IModuleManager>().SingleInstance();
                 (Container as IAutofacContainer)?.Register(ctx => new AutofacModuleInitializer(Container)).As<IModuleInitializer>().SingleInstance();
-                (Container as IAutofacContainer)?.Register(ctx => new ModuleManager(Container.Resolve<IModuleInitializer>(), Container.Resolve<IModuleCatalog>())).As<IModuleManager>().SingleInstance();
+                (Container as IAutofacContainer)?.Register(ctx => new ModuleManager(Container.Resolve<IModuleInitializer>(), Container.Resolve<IModuleCatalog>()))
+                    .As<IModuleManager>().SingleInstance();
                 (Container as IAutofacContainer)?.Register(ctx => new EventAggregator()).As<IEventAggregator>().SingleInstance();
                 (Container as IAutofacContainer)?.Register(ctx => new DependencyService()).As<IDependencyService>().SingleInstance();
                 (Container as IAutofacContainer)?.Register(ctx => new PageDialogService(ctx.Resolve<IApplicationProvider>())).As<IPageDialogService>().SingleInstance();
