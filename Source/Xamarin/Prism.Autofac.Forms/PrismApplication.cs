@@ -115,7 +115,6 @@ namespace Prism.Autofac
         protected override IContainer CreateContainer()
         {
             _isContainerTypeSet = true;
-            //return new ContainerBuilder().Build();
             if (_containerType == AutofacContainerType.Mutable)
             {
                 return (_mutableContainer = _mutableContainer ?? new ContainerBuilder().Build());
@@ -250,6 +249,7 @@ namespace Prism.Autofac
                 (Container as IAutofacContainer)?.Register(ctx => new DeviceService()).As<IDeviceService>().SingleInstance();
                 (Container as IAutofacContainer)?.RegisterInstance(Container).As<IContainer>().SingleInstance();
                 (Container as IAutofacContainer)?.RegisterInstance(Container).As<IAutofacContainer>().SingleInstance();
+                (Container as IAutofacContainer)?.Register(ctx => CreateNavigationService()).As<INavigationService>();
             }
             else
             {
