@@ -19,10 +19,34 @@ namespace Prism.Autofac.Windows
     /// </summary>
     public abstract class PrismAutofacApplication : PrismApplication, IDisposable
     {
+        private static bool _isContainerTypeSet;
+        private static AutofacContainerType _containerType = AutofacContainerType.Mutable;
+
+        /// <summary>
+        /// Allows you to set the type of container that will be used by Prism.Autofac.Forms:
+        ///  - Mutable is the traditional style of container that can be updated via ContainerBuilder.Update() (obsolete)
+        ///  - Immutable is an updated style of container that cannot be updated after it is built (RECOMMENDED)
+        /// Defaults to Mutable for backwards compatibility with Prism.Autofac.Forms v6.3.0 (and earlier).
+        /// </summary>
+        public static AutofacContainerType ContainerType
+        {
+            get => _containerType;
+            set
+            {
+                if (_isContainerTypeSet)
+                {
+                    throw new InvalidOperationException("The ContainerType can only be set once; this should be done early in "
+                                                        + "application initialization, before registering or resolving types.");
+                }
+                _containerType = value;
+                _isContainerTypeSet = true;
+            }
+        }
+
         /// <summary>
         /// Allow strongly typed access to the Application as a global
         /// </summary>
-        public static new PrismAutofacApplication Current => (PrismAutofacApplication)Application.Current;
+        public new static PrismAutofacApplication Current => (PrismAutofacApplication)Application.Current;
 
         /// <summary>
         /// Get the IoC Autofac Container 
@@ -35,7 +59,7 @@ namespace Prism.Autofac.Windows
         /// </summary>
         /// <param name="type">The type.</param>
         /// <returns>A concrete instance of the specified type.</returns>
-        protected override sealed object Resolve(Type type)
+        protected sealed override object Resolve(Type type)
         {
             return Container.Resolve(type);
         }
@@ -66,6 +90,7 @@ namespace Prism.Autofac.Windows
         protected virtual void ConfigureContainer(ContainerBuilder builder)
         {
             Logger.Log("Registering Prism services with container", Category.Debug, Priority.Low);
+            // ReSharper disable once RedundantTypeArgumentsOfMethod
             builder.RegisterInstance<ILoggerFacade>(Logger);
             RegisterTypeIfMissing<ISessionStateService, SessionStateService>(builder, true);
             RegisterTypeIfMissing<IDeviceGestureService, DeviceGestureService>(builder, true);
@@ -235,14 +260,8 @@ namespace Prism.Autofac.Windows
 
             var registration = containerUpdater.RegisterInstance(instance);
             // named instance
-            if (!string.IsNullOrEmpty(key))
-            {
-                registration = registration.Named(key, fromType);
-            }
-            else
-            {
-                registration = registration.As(fromType);
-            }
+            registration = !string.IsNullOrEmpty(key) ? registration.Named(key, fromType) : registration.As(fromType);
+
             // singleton
             if (registerAsSingleton)
             {
