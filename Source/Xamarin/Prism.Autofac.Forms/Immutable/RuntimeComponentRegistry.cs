@@ -1,15 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Reflection;
 using Autofac;
 using Autofac.Core;
 
 namespace Prism.Autofac.Forms.Immutable
 {
+    //Newer versions of Autofac (e.g. 4.5.x) require implementations of IComponentRegistry to
+    //  have a readonly Properties property of type IDictionary<string, object>
+    internal interface IPropertiesDictionary
+    {
+        IDictionary<string, object> Properties { get; }
+    }
+
     /// <summary>
     /// Implementation of IComponentRegistry that is provided for querying Type/Page registrations after
     /// the Prism Autofac container has been built; but does not allow subsequent registrations.
     /// </summary>
-    public class RuntimeComponentRegistry : IComponentRegistry
+    public class RuntimeComponentRegistry : IComponentRegistry, IPropertiesDictionary
     {
         private IContainer _container;
 
@@ -55,6 +63,30 @@ namespace Prism.Autofac.Forms.Immutable
 
         public IEnumerable<IRegistrationSource> Sources => _container.ComponentRegistry.Sources;
 
+        public IDictionary<string, object> Properties
+        {
+            get
+            {
+                IDictionary<string, object> result = null;
+
+                if (_container?.ComponentRegistry != null)
+                {
+                    try
+                    {
+                        PropertyInfo props = _container.ComponentRegistry.GetType().GetRuntimeProperty("Properties");
+                        result = props?.GetValue(_container.ComponentRegistry, null) as IDictionary<string, object>;
+                    }
+                    catch (Exception e)
+                    {
+                        throw new InvalidOperationException("Expected the 'Properties' property of the Autofac IContainer's ComponentRegistry " + 
+                            $"to be of type 'IDictionary<string, object>' - {e.Message}");
+                    }
+                }
+
+                return result;
+            }
+        }
+
         public bool HasLocalComponents => _container.ComponentRegistry.HasLocalComponents;
 
         //These events do not appear to be used by Prism.Autofac.Forms at all.
@@ -64,6 +96,6 @@ namespace Prism.Autofac.Forms.Immutable
         public void Dispose()
         {
             _container = null;
-        }
+        }        
     }
 }
