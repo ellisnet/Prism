@@ -11,22 +11,6 @@ using Autofac.Features.Scanning;
 // ReSharper disable once CheckNamespace
 namespace Prism.Autofac.Forms
 {
-    /// <summary>
-    /// Options for whether the Autofac Container can be updated or not.
-    /// </summary>
-    public enum AutofacContainerType
-    {
-        /// <summary>
-        /// An Autofac Container that can be updated via the obsolete ContainerBuilder.Update() method.
-        /// </summary>
-        [Obsolete("The Mutable Autofac Container Type will be eliminated in a future version of Prism - as it uses Autofac features that will be removed in the future.")]
-        Mutable = 0,
-        /// <summary>
-        /// An Autofac Container that is not able to be updated via the updated obsolete ContainerBuilder.Update() method (RECOMMENDED).
-        /// </summary>
-        Immutable = 1
-    }
-
     public interface IAutofacContainer : IContainer
     {
         /// <summary>
@@ -41,7 +25,7 @@ namespace Prism.Autofac.Forms
         /// </summary>
         /// <param name="registeredType">The Type to check</param>
         /// <returns>True if the Type is already registered, False if it is not.</returns>
-        [Obsolete("The IsTypeRegistered() method will be removed in the future; if using Autofac 4.4.0 (or higher) use conditional registration instead.")]
+        [Obsolete("The IsTypeRegistered() method will be removed in the future; if you are using Autofac 4.4.0 (or higher), use conditional registration instead.")]
         bool IsTypeRegistered(Type registeredType);
 
         #region Registration operations

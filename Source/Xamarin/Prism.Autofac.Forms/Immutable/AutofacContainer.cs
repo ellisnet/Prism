@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Reflection;
 using Autofac;
 using Autofac.Builder;
@@ -50,7 +49,7 @@ namespace Prism.Autofac.Forms.Immutable
         }
 
         //TODO: We will be able to eliminate the IsTypeRegistered() method when we can require Autofac 4.4.0 or higher, and do conditional registration
-        [Obsolete("The IsTypeRegistered() method will be removed in the future; if using Autofac 4.4.0 (or higher) use conditional registration instead.")]
+        [Obsolete("The IsTypeRegistered() method will be removed in the future; if you are using Autofac 4.4.0 (or higher), use conditional registration instead.")]
         public bool IsTypeRegistered(Type registeredType)
         {
             if (registeredType == null) return false;
@@ -331,51 +330,27 @@ namespace Prism.Autofac.Forms.Immutable
 
         public ILifetimeScope BeginLifetimeScope()
         {
-            //I don't think this is used by Prism.Autofac, so I want to know if it is referenced
-            if (Debugger.IsAttached) { Debugger.Break(); }
             return _container?.BeginLifetimeScope();
         }
 
         public ILifetimeScope BeginLifetimeScope(object tag)
         {
-            //I don't think this is used by Prism.Autofac, so I want to know if it is referenced
-            if (Debugger.IsAttached) { Debugger.Break(); }
             return _container?.BeginLifetimeScope(tag);
         }
 
         public ILifetimeScope BeginLifetimeScope(Action<ContainerBuilder> configurationAction)
         {
-            //I don't think this is used by Prism.Autofac, so I want to know if it is referenced
-            if (Debugger.IsAttached) { Debugger.Break(); }
             return _container?.BeginLifetimeScope(configurationAction);
         }
 
         public ILifetimeScope BeginLifetimeScope(object tag, Action<ContainerBuilder> configurationAction)
         {
-            //I don't think this is used by Prism.Autofac, so I want to know if it is referenced
-            if (Debugger.IsAttached) { Debugger.Break(); }
             return _container?.BeginLifetimeScope(tag, configurationAction);
         }
 
-        public IDisposer Disposer
-        {
-            get
-            {
-                //I don't think this is used by Prism.Autofac, so I want to know if it is referenced
-                if (Debugger.IsAttached) { Debugger.Break(); }
-                return _container?.Disposer;
-            }
-        }
+        public IDisposer Disposer => _container?.Disposer;
 
-        public object Tag
-        {
-            get
-            {
-                //I don't think this is used by Prism.Autofac, so I want to know if it is referenced
-                if (Debugger.IsAttached) { Debugger.Break(); }
-                return _container?.Tag;
-            }
-        }
+        public object Tag => _container?.Tag;
 
         //These events appear to not be used by Prism.Autofac.Forms
         public event EventHandler<LifetimeScopeBeginningEventArgs> ChildLifetimeScopeBeginning;

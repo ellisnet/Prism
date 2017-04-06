@@ -164,21 +164,7 @@ namespace Prism.Autofac.Forms
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
 
-            if (PrismApplication.ContainerType == AutofacContainerType.Mutable)
-            {
-                if (!container.IsRegistered(type))
-                {
-                    var containerUpdater = new ContainerBuilder();
-
-                    if (registerAsSingleton)
-                        containerUpdater.RegisterType(type).Named<Page>(name).SingleInstance();
-                    else
-                        containerUpdater.RegisterType(type).Named<Page>(name);
-
-                    containerUpdater.Update(container);
-                }
-            }
-            else if (PrismApplication.ContainerType == AutofacContainerType.Immutable && container is IAutofacContainer afContainer)
+            if (container is IAutofacContainer afContainer)
             {
                 //TODO: In the future, the use of IsTypeRegistered() should be eliminated and these should be done as conditional 
                 //  registrations instead: http://docs.autofac.org/en/latest/register/registration.html#conditional-registration
