@@ -63,6 +63,12 @@ namespace Prism.Autofac.Forms.Immutable
 
         public IEnumerable<IRegistrationSource> Sources => _container.ComponentRegistry.Sources;
 
+        //TODO: The problem here is that IComponentRegistry in Autofac 3.x does NOT have a Properties property
+        //  but Autofac 4.x does.  We don't want to require Autofac 4.x at this time, because that requires .NETStandard
+        //  which requires extra work in Xamarin.Forms and Prism projects. So attempting to retrieve the value
+        //  from the _container.ComponentRegistry if available.
+        //  When we get to the point where we can require Autofac 4.x, it will just be this simple line:
+        //public IDictionary<string, object> Properties => _container.ComponentRegistry.Properties;
         public IDictionary<string, object> Properties
         {
             get
@@ -74,12 +80,15 @@ namespace Prism.Autofac.Forms.Immutable
                     try
                     {
                         PropertyInfo props = _container.ComponentRegistry.GetType().GetRuntimeProperty("Properties");
-                        result = props?.GetValue(_container.ComponentRegistry, null) as IDictionary<string, object>;
+                        if (props != null)
+                        {
+                            result = props.GetValue(_container.ComponentRegistry, null) as IDictionary<string, object>;
+                        }
                     }
-                    catch (Exception e)
+                    catch (Exception)
                     {
-                        throw new InvalidOperationException("Expected the 'Properties' property of the Autofac IContainer's ComponentRegistry " + 
-                            $"to be of type 'IDictionary<string, object>' - {e.Message}");
+                        //Could not retrieve Properties property from _container.ComponentRegistry
+                        result = new Dictionary<string, object>();
                     }
                 }
 
